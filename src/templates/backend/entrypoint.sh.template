@@ -1,0 +1,49 @@
+#!/bin/sh
+set -e
+
+echo "Starting {{ PROJECT_NAME }} backend..."
+
+DATABASE_STACK=${DATABASE_STACK:-{{ DATABASE_STACK }}}
+DATABASE_HOST=${DATABASE_HOST:-database}
+DATABASE_PORT=${DATABASE_PORT:-{{ DATABASE_PORT }}}
+
+# Wait for database to be ready
+if [ "$DATABASE_STACK" = "postgres" ]; then
+  echo "Waiting for PostgreSQL to be ready..."
+  until pg_isready -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "${DATABASE_USER}"; do
+    echo "PostgreSQL is unavailable - sleeping"
+    sleep 1
+  done
+  echo "PostgreSQL is ready!"
+elif [ "$DATABASE_STACK" = "mongo" ]; then
+  echo "Waiting for MongoDB to be ready..."
+  until mongosh --host "$DATABASE_HOST" --port "$DATABASE_PORT" --eval "db.adminCommand('ping')" > /dev/null 2>&1; do
+    echo "MongoDB is unavailable - sleeping"
+    sleep 1
+  done
+  echo "MongoDB is ready!"
+elif [ "$DATABASE_STACK" = "redis" ]; then
+  echo "Waiting for Redis to be ready..."
+  until redis-cli -h "$DATABASE_HOST" -p "$DATABASE_PORT" ping > /dev/null 2>&1; do
+    echo "Redis is unavailable - sleeping"
+    sleep 1
+  done
+  echo "Redis is ready!"
+fi
+
+# Run migrations (PostgreSQL only)
+if [ "$DATABASE_STACK" = "postgres" ]; then
+  echo "Running database migrations..."
+  cd /app
+  alembic upgrade head
+  echo "Migrations completed!"
+fi
+
+# Run seed script
+echo "Running seed script..."
+python seed.py
+
+# Start the FastAPI server
+echo "Starting FastAPI server..."
+exec uvicorn main:app --host 0.0.0.0 --port 8000
+

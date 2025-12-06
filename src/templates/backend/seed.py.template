@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""Database seeding script for {{ PROJECT_NAME }}."""
+
+import os
+import sys
+from datetime import datetime
+
+DATABASE_STACK = os.getenv("DATABASE_STACK", "")
+
+{% if DATABASE_STACK == "postgres" %}
+# PostgreSQL seeding
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+def seed_postgres():
+    """Seed PostgreSQL database."""
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        print("ERROR: DATABASE_URL not set", file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        conn = psycopg2.connect(database_url)
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Check if admin user already exists
+        cur.execute("SELECT COUNT(*) as count FROM users WHERE username = %s", ("admin",))
+        admin_exists = cur.fetchone()["count"] > 0
+        
+        if not admin_exists:
+            # Insert admin user
+            cur.execute(
+                "INSERT INTO users (username, email, created_at) VALUES (%s, %s, %s) RETURNING id",
+                ("admin", "admin@{{ PROJECT_NAME }}.local", datetime.now())
+            )
+            admin_id = cur.fetchone()["id"]
+            print(f"✓ Created admin user (ID: {admin_id})")
+        else:
+            print("✓ Admin user already exists, skipping")
+        
+        # Check if example project already exists
+        cur.execute("SELECT COUNT(*) as count FROM projects WHERE name = %s", ("Example Project",))
+        project_exists = cur.fetchone()["count"] > 0
+        
+        if not project_exists:
+            # Insert example project
+            cur.execute(
+                "INSERT INTO projects (name, description, created_at) VALUES (%s, %s, %s) RETURNING id",
+                ("Example Project", "This is an example project created by the seed script", datetime.now())
+            )
+            project_id = cur.fetchone()["id"]
+            print(f"✓ Created example project (ID: {project_id})")
+        else:
+            print("✓ Example project already exists, skipping")
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("✓ PostgreSQL seeding completed")
+        
+    except Exception as e:
+        print(f"ERROR seeding PostgreSQL: {e}", file=sys.stderr)
+        sys.exit(1)
+
+{% elif DATABASE_STACK == "mongo" %}
+# MongoDB seeding
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
+
+def seed_mongo():
+    """Seed MongoDB database."""
+    database_name = os.getenv("DATABASE_NAME", "{{ DATABASE_NAME }}")
+    database_port = os.getenv("DATABASE_PORT", "27017")
+    mongo_uri = os.getenv("MONGO_URI", f"mongodb://database:{database_port}/{database_name}")
+    
+    try:
+        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+        # Test connection
+        client.server_info()
+        db = client[database_name]
+        
+        # Check if collections are empty
+        users_count = db.users.count_documents({})
+        projects_count = db.projects.count_documents({})
+        
+        if users_count == 0:
+            # Insert admin user
+            db.users.insert_one({
+                "username": "admin",
+                "email": "admin@{{ PROJECT_NAME }}.local",
+                "created_at": datetime.now()
+            })
+            print("✓ Created admin user")
+        else:
+            print("✓ Users collection already has data, skipping seed")
+        
+        if projects_count == 0:
+            # Insert example project
+            db.projects.insert_one({
+                "name": "Example Project",
+                "description": "This is an example project created by the seed script",
+                "created_at": datetime.now()
+            })
+            print("✓ Created example project")
+        else:
+            print("✓ Projects collection already has data, skipping seed")
+        
+        # Create indexes
+        db.users.create_index("username", unique=True)
+        db.users.create_index("email", unique=True)
+        db.projects.create_index("name")
+        print("✓ Created indexes")
+        
+        client.close()
+        print("✓ MongoDB seeding completed")
+        
+    except ConnectionFailure:
+        print("ERROR: Could not connect to MongoDB", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"ERROR seeding MongoDB: {e}", file=sys.stderr)
+        sys.exit(1)
+
+{% elif DATABASE_STACK == "redis" %}
+# Redis seeding
+import redis
+
+def seed_redis():
+    """Seed Redis database."""
+    database_port = os.getenv("DATABASE_PORT", "6379")
+    redis_url = os.getenv("REDIS_URL", f"redis://database:{database_port}")
+    
+    try:
+        r = redis.from_url(redis_url, decode_responses=True)
+        
+        # Check if keys already exist
+        admin_exists = r.exists("admin:user")
+        config_exists = r.exists("app:config")
+        
+        if not admin_exists:
+            # Set admin key
+            r.hset("admin:user", mapping={
+                "username": "admin",
+                "email": "admin@{{ PROJECT_NAME }}.local",
+                "created_at": datetime.now().isoformat()
+            })
+            print("✓ Created admin:user key")
+        else:
+            print("✓ admin:user key already exists, skipping")
+        
+        if not config_exists:
+            # Set app config example
+            r.hset("app:config", mapping={
+                "app_name": "{{ PROJECT_NAME }}",
+                "version": "1.0.0",
+                "created_at": datetime.now().isoformat()
+            })
+            print("✓ Created app:config key")
+        else:
+            print("✓ app:config key already exists, skipping")
+        
+        print("✓ Redis seeding completed")
+        
+    except redis.ConnectionError:
+        print("ERROR: Could not connect to Redis", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"ERROR seeding Redis: {e}", file=sys.stderr)
+        sys.exit(1)
+
+{% endif %}
+
+def main():
+    """Main seeding function."""
+    if DATABASE_STACK == "postgres":
+        seed_postgres()
+    elif DATABASE_STACK == "mongo":
+        seed_mongo()
+    elif DATABASE_STACK == "redis":
+        seed_redis()
+    else:
+        print(f"WARNING: Unknown database stack: {DATABASE_STACK}, skipping seed", file=sys.stderr)
+        sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+

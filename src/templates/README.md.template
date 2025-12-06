@@ -1,0 +1,208 @@
+# {{ PROJECT_NAME }}
+
+Generated development environment with {{ BACKEND_STACK }} backend{% if DATABASE_STACK %} and {{ DATABASE_STACK }} database{% endif %}.
+
+## Prerequisites
+
+- Docker and Docker Compose installed
+- Python 3.11+ (for local development without Docker)
+
+## Quick Start with Docker
+
+1. Make sure you're in the project root directory
+2. Copy the environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   (Or use the provided `.env` file)
+
+3. Start all services:
+   ```bash
+   docker compose up
+   ```
+
+4. The backend API will be available at:
+   - http://localhost:{{ BACKEND_PORT }}
+
+5. Test the health endpoint:
+   ```bash
+   curl http://localhost:{{ BACKEND_PORT }}/health
+   ```
+
+## Running Without Docker
+
+### Backend (FastAPI)
+
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Run the development server:
+   ```bash
+   uvicorn main:app --reload --host 0.0.0.0 --port {{ BACKEND_PORT }}
+   ```
+
+{% if DATABASE_STACK == "postgres" %}
+### Database (PostgreSQL)
+
+For local development, you'll need PostgreSQL installed:
+
+1. Create the database:
+   ```bash
+   createdb {{ DATABASE_NAME }}
+   ```
+
+2. Update your backend code to use the local database connection string:
+   ```
+   postgresql://{{ DATABASE_USER }}:{{ DATABASE_PASSWORD }}@localhost:{{ DATABASE_PORT }}/{{ DATABASE_NAME }}
+   ```
+{% elif DATABASE_STACK == "mongo" %}
+### Database (MongoDB)
+
+For local development, you'll need MongoDB installed:
+
+1. Start MongoDB service:
+   ```bash
+   # On macOS with Homebrew:
+   brew services start mongodb-community
+   
+   # On Linux:
+   sudo systemctl start mongod
+   
+   # On Windows:
+   # Start MongoDB service from Services panel
+   ```
+
+2. Create the database (MongoDB creates databases on first use):
+   ```bash
+   mongosh
+   use {{ DATABASE_NAME }}
+   ```
+
+3. Update your backend code to use the local database connection string:
+   ```
+   mongodb://{{ DATABASE_USER }}:{{ DATABASE_PASSWORD }}@localhost:{{ DATABASE_PORT }}/{{ DATABASE_NAME }}
+   ```
+   Or for auth-less setup:
+   ```
+   mongodb://localhost:{{ DATABASE_PORT }}/{{ DATABASE_NAME }}
+   ```
+{% elif DATABASE_STACK == "redis" %}
+### Database (Redis)
+
+For local development, you'll need Redis installed:
+
+1. Start Redis service:
+   ```bash
+   # On macOS with Homebrew:
+   brew services start redis
+   
+   # On Linux:
+   sudo systemctl start redis
+   
+   # On Windows:
+   # Download and run Redis from https://redis.io/download
+   ```
+
+2. Update your backend code to use the local Redis connection:
+   ```
+   redis://localhost:{{ DATABASE_PORT }}
+   ```
+{% endif %}
+
+## Project Structure
+
+```
+{{ PROJECT_NAME }}/
+├── backend/              # Backend application code
+│   ├── main.py          # FastAPI application
+│   ├── requirements.txt # Python dependencies
+│   └── Dockerfile       # Backend Docker image
+{% if DATABASE_STACK %}
+├── database/            # Database initialization scripts (if any)
+{% endif %}
+├── docker-compose.yml   # Docker Compose configuration
+├── .env                 # Environment variables (do not commit!)
+└── README.md            # This file
+```
+
+## Environment Variables
+
+The `.env` file contains configuration for all services. Key variables:
+
+- `PROJECT_NAME`: Project name
+- `BACKEND_PORT`: Backend service port (default: {{ BACKEND_PORT }})
+{% if DATABASE_STACK == "postgres" %}
+- `DATABASE_PORT`: Database port (default: {{ DATABASE_PORT }})
+- `DATABASE_NAME`: Database name
+- `DATABASE_USER`: Database user
+- `DATABASE_PASSWORD`: Database password (change in production!)
+{% elif DATABASE_STACK == "mongo" %}
+- `DATABASE_PORT`: Database port (default: {{ DATABASE_PORT }})
+- `DATABASE_NAME`: Database name
+- `DATABASE_USER`: Database user (optional)
+- `DATABASE_PASSWORD`: Database password (optional)
+{% elif DATABASE_STACK == "redis" %}
+- `DATABASE_PORT`: Database port (default: {{ DATABASE_PORT }})
+{% endif %}
+
+**Important:** Never commit the `.env` file to version control. It contains sensitive information.
+
+## API Endpoints
+
+### Health Check
+
+- **GET** `/health`
+  - Returns: `{"status": "healthy", "service": "{{ PROJECT_NAME }}_backend"}`
+
+## Development Workflow
+
+1. Make changes to your code
+2. If using Docker, rebuild and restart:
+   ```bash
+   docker compose up --build
+   ```
+3. If running locally, the development server will auto-reload on file changes
+
+## Troubleshooting
+
+### Port Already in Use
+
+If you get a port conflict error, you can change the ports in the `.env` file and restart the services.
+
+### Database Connection Issues
+
+- Ensure the database service is running: `docker compose ps`
+- Check the database logs: `docker compose logs database`
+- Verify environment variables in `.env` match the docker-compose.yml configuration
+
+### Backend Not Starting
+
+- Check backend logs: `docker compose logs backend`
+- Verify Python dependencies are installed correctly
+- Ensure the backend port is not already in use
+
+## Stopping Services
+
+To stop all services:
+```bash
+docker compose down
+```
+
+To stop and remove volumes (this will delete database data):
+```bash
+docker compose down -v
+```
+

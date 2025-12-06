@@ -1,0 +1,40 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(title="{{ PROJECT_NAME }} API")
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+{% if FRONTEND_STACK %}
+    allow_origins=["http://localhost:{{ FRONTEND_PORT }}", "http://frontend:80"],
+{% else %}
+    allow_origins=["*"],  # Configure appropriately for production
+{% endif %}
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "service": "{{ PROJECT_NAME }}_backend"}
+
+{% if DATABASE_STACK == "postgres" %}
+# PostgreSQL connection example (uncomment and configure as needed)
+# from sqlalchemy import create_engine
+# DATABASE_URL = "postgresql://{{ DATABASE_USER }}:{{ DATABASE_PASSWORD }}@{{ DATABASE_SERVICE_NAME }}:5432/{{ DATABASE_NAME }}"
+# engine = create_engine(DATABASE_URL)
+{% elif DATABASE_STACK == "mongo" %}
+# MongoDB connection example (uncomment and configure as needed)
+# from pymongo import MongoClient
+# MONGO_URI = "mongodb://{{ DATABASE_USER }}:{{ DATABASE_PASSWORD }}@{{ DATABASE_SERVICE_NAME }}:27017/{{ DATABASE_NAME }}"
+# client = MongoClient(MONGO_URI)
+# db = client["{{ DATABASE_NAME }}"]
+{% elif DATABASE_STACK == "redis" %}
+# Redis connection example (uncomment and configure as needed)
+# import redis
+# REDIS_URL = "redis://{{ DATABASE_SERVICE_NAME }}:6379"
+# r = redis.from_url(REDIS_URL)
+{% endif %}
+

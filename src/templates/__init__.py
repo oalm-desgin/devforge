@@ -1,0 +1,2 @@
+"""Templates module for DevForge"""
+

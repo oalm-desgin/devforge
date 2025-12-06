@@ -1,0 +1,11 @@
+{% if DATABASE_STACK == "redis" %}
+  database:
+    image: redis:7-alpine
+    ports:
+      - "${DATABASE_PORT:-{{ DATABASE_PORT }}}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - {{ DOCKER_NETWORK }}
+{% endif %}
+

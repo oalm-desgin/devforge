@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+{% if FRONTEND_STACK == "react_ts_vite" %}
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-{{ FRONTEND_PORT }}}:80"
+    networks:
+      - {{ DOCKER_NETWORK }}
+{% if BACKEND_STACK %}
+    depends_on:
+      - backend
+{% endif %}
+{% endif %}
+
+{% if BACKEND_STACK == "fastapi" %}
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "${BACKEND_PORT:-{{ BACKEND_PORT }}}:8000"
+    environment:
+{% if DATABASE_STACK == "postgres" %}
+      - DATABASE_URL=postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@database:5432/${DATABASE_NAME}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - DATABASE_STACK=postgres
+      - DATABASE_HOST=database
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+{% elif DATABASE_STACK == "mongo" %}
+      - MONGO_URI=mongodb://${DATABASE_USER}:${DATABASE_PASSWORD}@database:27017/${DATABASE_NAME}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - DATABASE_STACK=mongo
+      - DATABASE_HOST=database
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+{% elif DATABASE_STACK == "redis" %}
+      - REDIS_URL=redis://database:6379
+      - DATABASE_PORT=${DATABASE_PORT}
+      - DATABASE_STACK=redis
+      - DATABASE_HOST=database
+{% endif %}
+    depends_on:
+{% if DATABASE_STACK %}
+      database:
+        condition: service_healthy
+{% endif %}
+    networks:
+      - {{ DOCKER_NETWORK }}
+{% endif %}
+
+{% if DATABASE_STACK == "postgres" %}
+  database:
+    image: postgres:15-alpine
+    ports:
+      - "${DATABASE_PORT:-{{ DATABASE_PORT }}}:5432"
+    environment:
+      - POSTGRES_DB=${DATABASE_NAME}
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - {{ DOCKER_NETWORK }}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+{% elif DATABASE_STACK == "mongo" %}
+  database:
+    image: mongo:7
+    ports:
+      - "${DATABASE_PORT:-{{ DATABASE_PORT }}}:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=${DATABASE_NAME}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - {{ DOCKER_NETWORK }}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+{% elif DATABASE_STACK == "redis" %}
+  database:
+    image: redis:7-alpine
+    ports:
+      - "${DATABASE_PORT:-{{ DATABASE_PORT }}}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - {{ DOCKER_NETWORK }}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+{% endif %}
+
+networks:
+  {{ DOCKER_NETWORK }}:
+    driver: bridge
+
+volumes:
+{% if DATABASE_STACK == "postgres" %}
+  postgres_data:
+{% elif DATABASE_STACK == "mongo" %}
+  mongo_data:
+{% elif DATABASE_STACK == "redis" %}
+  redis_data:
+{% endif %}
+

@@ -1,0 +1,15 @@
+{% if DATABASE_STACK == "postgres" %}
+  database:
+    image: postgres:15-alpine
+    ports:
+      - "${DATABASE_PORT:-{{ DATABASE_PORT }}}:5432"
+    environment:
+      - POSTGRES_DB=${DATABASE_NAME}
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - {{ DOCKER_NETWORK }}
+{% endif %}
+

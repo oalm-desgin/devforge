@@ -1,0 +1,13 @@
+{% if DATABASE_STACK == "mongo" %}
+  database:
+    image: mongo:7
+    ports:
+      - "${DATABASE_PORT:-{{ DATABASE_PORT }}}:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=${DATABASE_NAME}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - {{ DOCKER_NETWORK }}
+{% endif %}
+

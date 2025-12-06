@@ -1,0 +1,89 @@
+pipeline {
+    agent any
+    
+    environment {
+        PROJECT_NAME = '{{ PROJECT_NAME }}'
+        DOCKER_REGISTRY = 'your-registry.com'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    if (fileExists('backend/requirements.txt')) {
+                        sh '''
+                            cd backend
+                            python3 -m venv venv
+                            source venv/bin/activate
+                            pip install -r requirements.txt
+                        '''
+                    }
+                    if (fileExists('frontend/package.json')) {
+                        sh '''
+                            cd frontend
+                            npm install
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                script {
+                    if (fileExists('backend/requirements.txt')) {
+                        sh '''
+                            cd backend
+                            source venv/bin/activate
+                            # Add your test command here
+                            # pytest tests/ || true
+                        '''
+                    }
+                    if (fileExists('frontend/package.json')) {
+                        sh '''
+                            cd frontend
+                            npm test || true
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Build Docker Images') {
+            steps {
+                script {
+                    sh 'docker compose build'
+                }
+            }
+        }
+        
+        stage('Push Images') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    sh '''
+                        docker tag ${PROJECT_NAME}_backend ${DOCKER_REGISTRY}/${PROJECT_NAME}_backend:latest
+                        docker tag ${PROJECT_NAME}_frontend ${DOCKER_REGISTRY}/${PROJECT_NAME}_frontend:latest
+                        docker push ${DOCKER_REGISTRY}/${PROJECT_NAME}_backend:latest || true
+                        docker push ${DOCKER_REGISTRY}/${PROJECT_NAME}_frontend:latest || true
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
+
