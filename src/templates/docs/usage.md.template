@@ -1,0 +1,169 @@
+# Usage Guide
+
+This guide covers how to use and interact with {{ PROJECT_NAME }}.
+
+## Starting Services
+
+### Using Docker Compose
+
+Start all services:
+```bash
+docker compose up
+```
+
+Start in detached mode (background):
+```bash
+docker compose up -d
+```
+
+View logs:
+```bash
+docker compose logs -f
+```
+
+### Using Local Services
+
+{% if BACKEND_STACK %}
+#### Backend
+
+Start the backend server:
+```bash
+cd backend
+uvicorn main:app --reload --host 0.0.0.0 --port {{ BACKEND_PORT }}
+```
+
+The `--reload` flag enables auto-reload on code changes.
+{% endif %}
+
+## API Endpoints
+
+{% if BACKEND_PORT %}
+### Health Check
+
+Check if the backend is running:
+```bash
+curl http://localhost:{{ BACKEND_PORT }}/health
+```
+
+Expected response:
+```json
+{
+  "status": "healthy",
+  "service": "{{ PROJECT_NAME }}_backend"
+}
+```
+
+### Base URL
+
+All API endpoints are available at:
+```
+http://localhost:{{ BACKEND_PORT }}
+```
+{% else %}
+No backend API is configured for this project.
+{% endif %}
+
+## Development Workflow
+
+1. **Make changes to your code**
+2. **If using Docker:**
+   ```bash
+   docker compose up --build
+   ```
+3. **If running locally:**
+   - Backend will auto-reload on file changes (with `--reload` flag)
+   - Frontend will auto-reload if using a development server
+
+## Stopping Services
+
+### Docker Compose
+
+Stop all services:
+```bash
+docker compose down
+```
+
+Stop and remove volumes (deletes database data):
+```bash
+docker compose down -v
+```
+
+### Local Services
+
+Stop services using `Ctrl+C` in the terminal where they're running.
+
+## Environment Variables
+
+Configuration is managed through the `.env` file. Key variables:
+
+- `PROJECT_NAME`: {{ PROJECT_NAME }}
+{% if BACKEND_PORT %}
+- `BACKEND_PORT`: {{ BACKEND_PORT }}
+{% endif %}
+{% if FRONTEND_PORT %}
+- `FRONTEND_PORT`: {{ FRONTEND_PORT }}
+{% endif %}
+{% if DATABASE_STACK %}
+- `DATABASE_PORT`: {{ DATABASE_PORT }}
+- `DATABASE_NAME`: {{ DATABASE_NAME }}
+- `DATABASE_USER`: {{ DATABASE_USER }}
+{% endif %}
+
+**Important:** Never commit the `.env` file to version control.
+
+## Project Structure
+
+```
+{{ PROJECT_NAME }}/
+├── backend/              # Backend application code
+{% if BACKEND_STACK %}
+│   ├── main.py          # FastAPI application
+│   ├── requirements.txt # Python dependencies
+│   └── Dockerfile       # Backend Docker image
+{% endif %}
+{% if DATABASE_STACK %}
+├── database/            # Database initialization scripts (if any)
+{% endif %}
+{% if FRONTEND_STACK %}
+├── frontend/             # Frontend application code
+{% endif %}
+├── docker-compose.yml    # Docker Compose configuration
+├── .env                  # Environment variables (do not commit!)
+└── README.md            # Project documentation
+```
+
+## Common Tasks
+
+### Viewing Logs
+
+**Docker:**
+```bash
+# All services
+docker compose logs
+
+# Specific service
+docker compose logs backend
+docker compose logs database
+```
+
+**Local:**
+Logs appear in the terminal where services are running.
+
+### Restarting Services
+
+**Docker:**
+```bash
+docker compose restart
+```
+
+**Local:**
+Stop and start services manually.
+
+### Rebuilding Images
+
+If you change Dockerfiles or dependencies:
+```bash
+docker compose up --build
+```
+
+

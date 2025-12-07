@@ -76,6 +76,29 @@ class DatabaseConfig:
 
 
 @dataclass
+class CloudConfig:
+    """Cloud infrastructure configuration."""
+    provider: str  # "oci", "aws", or "gcp"
+    region: str = "us-east-1"  # Default region (provider-specific)
+    credentials_path: Optional[str] = None
+    
+    @property
+    def is_oci(self) -> bool:
+        """Check if this is Oracle Cloud Infrastructure."""
+        return self.provider == "oci"
+    
+    @property
+    def is_aws(self) -> bool:
+        """Check if this is AWS."""
+        return self.provider == "aws"
+    
+    @property
+    def is_gcp(self) -> bool:
+        """Check if this is Google Cloud Platform."""
+        return self.provider == "gcp"
+
+
+@dataclass
 class ProjectConfig:
     """Complete project configuration."""
     project_name: str
@@ -86,6 +109,7 @@ class ProjectConfig:
     ports: Optional[PortConfig] = None
     docker_network: str = ""
     include_ci: bool = False
+    cloud: Optional[CloudConfig] = None
 
     def __post_init__(self):
         """Initialize default values after dataclass creation."""

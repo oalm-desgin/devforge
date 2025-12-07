@@ -1,0 +1,21 @@
+output "vpc_id" {
+  description = "ID of the VPC"
+  value       = aws_vpc.main.id
+}
+
+output "subnet_id" {
+  description = "ID of the public subnet"
+  value       = aws_subnet.public.id
+}
+
+output "load_balancer_dns" {
+  description = "DNS name of the load balancer"
+  value       = aws_lb.main.dns_name
+}
+
+output "compute_instance_public_ip" {
+  description = "Public IP of the EC2 instance"
+  value       = aws_instance.main.public_ip
+}
+
+

@@ -10,6 +10,7 @@ from ..core.config_models import (
     BackendConfig,
     DatabaseConfig,
     PortConfig,
+    CloudConfig,
 )
 from ..core.validators import validate_project_name, validate_path, validate_project_config
 from ..core.preset_loader import load_preset, get_preset_default
@@ -245,7 +246,58 @@ def prompt_destination_path() -> Path:
             print("Please try again.\n")
 
 
-def collect_project_config(preset_path: Optional[Path] = None, include_ci: bool = False) -> ProjectConfig:
+def prompt_cloud_provider() -> Optional[CloudConfig]:
+    """
+    Prompt user for cloud provider selection.
+    
+    Returns:
+        CloudConfig if cloud is enabled, None otherwise
+    """
+    print("\nCloud Infrastructure:")
+    include_cloud = input("Include cloud infrastructure (Terraform)? (y/n, default: n): ").strip().lower()
+    
+    if include_cloud not in ('y', 'yes'):
+        return None
+    
+    print("\nSelect cloud provider:")
+    print("  1) Oracle Cloud Infrastructure (OCI)")
+    print("  2) Amazon Web Services (AWS)")
+    print("  3) Google Cloud Platform (GCP)")
+    
+    while True:
+        choice = input("Enter choice (1-3): ").strip()
+        
+        if choice == "1":
+            provider = "oci"
+            default_region = "us-ashburn-1"
+            break
+        elif choice == "2":
+            provider = "aws"
+            default_region = "us-east-1"
+            break
+        elif choice == "3":
+            provider = "gcp"
+            default_region = "us-central1"
+            break
+        else:
+            print("Invalid choice. Please enter 1, 2, or 3.")
+    
+    region = input(f"Enter region (default: {default_region}): ").strip()
+    if not region:
+        region = default_region
+    
+    credentials_path = input("Enter path to credentials file (optional, press Enter to skip): ").strip()
+    if not credentials_path:
+        credentials_path = None
+    
+    return CloudConfig(
+        provider=provider,
+        region=region,
+        credentials_path=credentials_path
+    )
+
+
+def collect_project_config(preset_path: Optional[Path] = None, include_ci: bool = False, include_cloud: bool = False) -> ProjectConfig:
     """
     Collect all project configuration through interactive prompts.
     
@@ -393,6 +445,11 @@ def collect_project_config(preset_path: Optional[Path] = None, include_ci: bool 
         database_port=database.port if database else 5432,
     )
     
+    # Cloud infrastructure (optional)
+    cloud = None
+    if include_cloud:
+        cloud = prompt_cloud_provider()
+    
     # Build project config
     config = ProjectConfig(
         project_name=project_name,
@@ -403,6 +460,7 @@ def collect_project_config(preset_path: Optional[Path] = None, include_ci: bool 
         ports=ports,
         docker_network=f"{project_name}_network",
         include_ci=include_ci,
+        cloud=cloud,
     )
     
     return config

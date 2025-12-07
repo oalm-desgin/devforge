@@ -1,0 +1,21 @@
+output "vcn_id" {
+  description = "OCID of the VCN"
+  value       = oci_core_vcn.main.id
+}
+
+output "subnet_id" {
+  description = "OCID of the subnet"
+  value       = oci_core_subnet.main.id
+}
+
+output "load_balancer_ip" {
+  description = "Public IP of the load balancer"
+  value       = oci_load_balancer_load_balancer.main.ip_address_details[0].ip_address
+}
+
+output "compute_instance_public_ip" {
+  description = "Public IP of the compute instance"
+  value       = oci_core_instance.main.public_ip
+}
+
+

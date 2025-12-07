@@ -1,0 +1,69 @@
+# {{ PROJECT_NAME }}
+
+Welcome to the {{ PROJECT_NAME }} documentation!
+
+## Overview
+
+{{ PROJECT_NAME }} is a development environment with:
+{% if BACKEND_STACK %}
+- **Backend**: {{ BACKEND_STACK|title }} ({{ BACKEND_LANGUAGE }})
+{% endif %}
+{% if FRONTEND_STACK %}
+- **Frontend**: {{ FRONTEND_STACK|title }}
+{% endif %}
+{% if DATABASE_STACK %}
+- **Database**: {{ DATABASE_STACK|title }}
+{% endif %}
+{% if CLOUD_PROVIDER %}
+- **Cloud**: {{ CLOUD_PROVIDER|upper }}
+{% endif %}
+
+## Quick Start
+
+Get started in minutes:
+
+1. **Install dependencies** (see [Installation Guide](install.md))
+2. **Start services** (see [Usage Guide](usage.md))
+3. **Configure environment** (see [Environment Variables](env.md))
+
+## Documentation
+
+- **[Installation Guide](install.md)** - Set up and install {{ PROJECT_NAME }}
+- **[Usage Guide](usage.md)** - How to use and interact with the project
+- **[Environment Variables](env.md)** - Configuration and environment setup
+{% if INCLUDE_CI %}
+- **[CI/CD Configuration](ci.md)** - Continuous integration and deployment
+{% endif %}
+{% if CLOUD_PROVIDER %}
+- **[Cloud Infrastructure](cloud.md)** - Deploy to {{ CLOUD_PROVIDER|upper }}
+{% endif %}
+
+## Project Information
+
+- **Project Name**: {{ PROJECT_NAME }}
+- **Docker Network**: {{ DOCKER_NETWORK }}
+{% if BACKEND_PORT %}
+- **Backend Port**: {{ BACKEND_PORT }}
+- **Backend URL**: http://localhost:{{ BACKEND_PORT }}
+{% endif %}
+{% if FRONTEND_PORT %}
+- **Frontend Port**: {{ FRONTEND_PORT }}
+- **Frontend URL**: http://localhost:{{ FRONTEND_PORT }}
+{% endif %}
+{% if DATABASE_STACK %}
+- **Database**: {{ DATABASE_STACK|title }} (Port: {{ DATABASE_PORT }})
+{% endif %}
+
+## Getting Help
+
+If you encounter issues:
+
+1. Check the [Installation Guide](install.md) for setup problems
+2. Review [Usage Guide](usage.md) for operational questions
+3. Check [Environment Variables](env.md) for configuration issues
+
+## Contributing
+
+Contributions are welcome! Please follow the project's contribution guidelines.
+
+

@@ -4,12 +4,13 @@ import logging
 import secrets
 import string
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from .config_models import ProjectConfig, DatabaseConfig
 from .file_writer import FileWriter
 from .errors import GenerationError
 from .validators import is_port_free, find_free_port, find_free_port_in_range
+from .plugin_manager import PluginManager
 from ..template_engine import TemplateEngine
 
 logger = logging.getLogger(__name__)
@@ -18,17 +19,29 @@ logger = logging.getLogger(__name__)
 class ProjectGenerator:
     """Orchestrates project generation from templates."""
     
-    def __init__(self, templates_dir: Path, file_writer: FileWriter):
+    def __init__(
+        self,
+        templates_dir: Path,
+        file_writer: FileWriter,
+        plugins_dir: Optional[Path] = None
+    ):
         """
         Initialize project generator.
         
         Args:
             templates_dir: Base directory containing template files
             file_writer: FileWriter instance for safe file operations
+            plugins_dir: Optional directory containing plugin modules
         """
         self.templates_dir = Path(templates_dir).resolve()
         self.file_writer = file_writer
         self.template_engine = TemplateEngine(self.templates_dir)
+        
+        # Initialize plugin manager if plugins directory is provided
+        self.plugin_manager: Optional[PluginManager] = None
+        if plugins_dir is not None:
+            self.plugin_manager = PluginManager(Path(plugins_dir).resolve())
+            self.plugin_manager.discover_plugins()
     
     def generate(self, config: ProjectConfig) -> None:
         """
@@ -80,6 +93,17 @@ class ProjectGenerator:
         # Generate CI files if requested
         if config.include_ci:
             self._generate_ci(project_root, config, context)
+        
+        # Generate cloud infrastructure if requested
+        if config.cloud:
+            self._generate_cloud(project_root, config, context)
+        
+        # Generate documentation if requested
+        self._generate_documentation(project_root, config, context)
+        
+        # Initialize secrets store if backend+database or CI enabled
+        if (config.backend and config.database) or config.include_ci:
+            self._initialize_secrets(project_root, config, context)
         
         logger.info(f"Project generation complete: {project_root}")
     
@@ -274,6 +298,14 @@ class ProjectGenerator:
             context["DATABASE_PASSWORD"] = None
             context["DATABASE_HOST"] = None
         
+        # Cloud context (if cloud is enabled)
+        if config.cloud:
+            context["CLOUD_PROVIDER"] = config.cloud.provider
+            context["CLOUD_REGION"] = config.cloud.region
+        else:
+            context["CLOUD_PROVIDER"] = None
+            context["CLOUD_REGION"] = None
+        
         return context
     
     def _generate_backend(
@@ -313,6 +345,29 @@ class ProjectGenerator:
             )
             output_path = backend_dir / output_filename
             self.file_writer.write_file(output_path, rendered, overwrite=False)
+        
+        # Render plugin templates for backend if available
+        if self.plugin_manager:
+            plugin_templates = self.plugin_manager.get_plugin_templates()
+            for template_name, template_path in plugin_templates.items():
+                # Plugin templates are rendered into the backend directory
+                # Template name format: "plugin_name/template_file.ext"
+                if '/' in template_name:
+                    parts = template_name.split('/', 1)
+                    plugin_name, template_file = parts
+                else:
+                    template_file = template_name
+                
+                try:
+                    rendered = self.template_engine.render_template(
+                        template_path,
+                        context
+                    )
+                    output_path = backend_dir / template_file
+                    self.file_writer.write_file(output_path, rendered, overwrite=False)
+                    logger.debug(f"Rendered plugin template: {template_name}")
+                except Exception as e:
+                    logger.warning(f"Failed to render plugin template '{template_name}': {e}")
     
     def _generate_migrations(
         self,
@@ -500,11 +555,301 @@ class ProjectGenerator:
             github_template,
             context
         )
+        
+        # Add secret validation if secrets are enabled
+        if (config.backend and config.database) or config.include_ci:
+            secrets_template = Path("ci/github-secrets.template")
+            if (self.templates_dir / secrets_template).exists():
+                # Build secrets context
+                secrets_context = context.copy()
+                required_secrets = []
+                if config.database:
+                    required_secrets.append("DATABASE_PASSWORD")
+                if config.backend:
+                    required_secrets.append("BACKEND_SECRET_KEY")
+                secrets_context["REQUIRED_SECRETS"] = " ".join(required_secrets)
+                
+                secrets_section = self.template_engine.render_template(
+                    secrets_template,
+                    secrets_context
+                )
+                # Merge secrets section into workflow (append before test job)
+                if "jobs:" in rendered_github and "test:" in rendered_github:
+                    # Insert secrets validation jobs before test
+                    rendered_github = rendered_github.replace(
+                        "jobs:",
+                        f"jobs:\n{secrets_section.split('jobs:')[-1] if 'jobs:' in secrets_section else secrets_section}"
+                    )
+        
         # Create .github/workflows directory
         workflows_dir = project_root / ".github" / "workflows"
         self.file_writer.create_directory(workflows_dir, exist_ok=True)
         github_path = workflows_dir / "ci.yml"
         self.file_writer.write_file(github_path, rendered_github, overwrite=False)
+    
+    def _generate_cloud(
+        self,
+        project_root: Path,
+        config: ProjectConfig,
+        context: Dict[str, Any]
+    ) -> None:
+        """Generate cloud infrastructure files (Terraform)."""
+        if not config.cloud:
+            return
+        
+        # Validate cloud credentials
+        self._validate_cloud_credentials(config.cloud)
+        
+        # Create terraform directory
+        terraform_dir = project_root / "terraform"
+        self.file_writer.create_directory(terraform_dir)
+        
+        provider = config.cloud.provider
+        
+        # Generate provider-specific Terraform files
+        if provider == "oci":
+            self._generate_oci_terraform(terraform_dir, context)
+        elif provider == "aws":
+            self._generate_aws_terraform(terraform_dir, context)
+        elif provider == "gcp":
+            self._generate_gcp_terraform(terraform_dir, context)
+        else:
+            raise GenerationError(f"Unsupported cloud provider: {provider}")
+        
+        # Generate .env file for cloud credentials
+        self._generate_cloud_env(terraform_dir, config.cloud)
+    
+    def _validate_cloud_credentials(self, cloud_config) -> None:
+        """
+        Validate cloud provider credentials are present.
+        
+        Args:
+            cloud_config: CloudConfig instance
+            
+        Raises:
+            GenerationError: If credentials are missing
+        """
+        if cloud_config.provider == "oci":
+            # Check for OCI credentials in environment or config
+            import os
+            required_vars = ["OCI_TENANCY_OCID", "OCI_USER_OCID", "OCI_FINGERPRINT"]
+            missing = [var for var in required_vars if not os.getenv(var)]
+            if missing:
+                logger.warning(
+                    f"Missing OCI environment variables: {', '.join(missing)}. "
+                    "Please set them before running terraform."
+                )
+        elif cloud_config.provider == "aws":
+            # Check for AWS credentials
+            import os
+            if not os.getenv("AWS_ACCESS_KEY_ID") and not os.getenv("AWS_PROFILE"):
+                logger.warning(
+                    "AWS credentials not found. Please configure AWS credentials "
+                    "using 'aws configure' or set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."
+                )
+        elif cloud_config.provider == "gcp":
+            # Check for GCP credentials
+            import os
+            if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and not os.getenv("GCP_PROJECT"):
+                logger.warning(
+                    "GCP credentials not found. Please set GOOGLE_APPLICATION_CREDENTIALS "
+                    "or run 'gcloud auth application-default login'."
+                )
+    
+    def _generate_oci_terraform(self, terraform_dir: Path, context: Dict[str, Any]) -> None:
+        """Generate OCI Terraform files."""
+        templates = [
+            ("cloud/oci/main.tf.template", "main.tf"),
+            ("cloud/oci/variables.tf.template", "variables.tf"),
+            ("cloud/oci/outputs.tf.template", "outputs.tf"),
+        ]
+        
+        for template_path, output_file in templates:
+            rendered = self.template_engine.render_template(
+                Path(template_path),
+                context
+            )
+            output_path = terraform_dir / output_file
+            self.file_writer.write_file(output_path, rendered, overwrite=False)
+    
+    def _generate_aws_terraform(self, terraform_dir: Path, context: Dict[str, Any]) -> None:
+        """Generate AWS Terraform files."""
+        templates = [
+            ("cloud/aws/main.tf.template", "main.tf"),
+            ("cloud/aws/variables.tf.template", "variables.tf"),
+            ("cloud/aws/outputs.tf.template", "outputs.tf"),
+        ]
+        
+        for template_path, output_file in templates:
+            rendered = self.template_engine.render_template(
+                Path(template_path),
+                context
+            )
+            output_path = terraform_dir / output_file
+            self.file_writer.write_file(output_path, rendered, overwrite=False)
+    
+    def _generate_gcp_terraform(self, terraform_dir: Path, context: Dict[str, Any]) -> None:
+        """Generate GCP Terraform files."""
+        templates = [
+            ("cloud/gcp/main.tf.template", "main.tf"),
+            ("cloud/gcp/variables.tf.template", "variables.tf"),
+            ("cloud/gcp/outputs.tf.template", "outputs.tf"),
+        ]
+        
+        for template_path, output_file in templates:
+            rendered = self.template_engine.render_template(
+                Path(template_path),
+                context
+            )
+            output_path = terraform_dir / output_file
+            self.file_writer.write_file(output_path, rendered, overwrite=False)
+    
+    def _generate_cloud_env(self, terraform_dir: Path, cloud_config) -> None:
+        """Generate .env file for cloud credentials."""
+        env_content = f"# Cloud Provider: {cloud_config.provider.upper()}\n"
+        env_content += f"CLOUD_PROVIDER={cloud_config.provider}\n"
+        env_content += f"CLOUD_REGION={cloud_config.region}\n\n"
+        
+        if cloud_config.provider == "oci":
+            env_content += "# OCI Credentials\n"
+            env_content += "# Set these environment variables:\n"
+            env_content += "# export OCI_TENANCY_OCID=ocid1.tenancy.oc1..xxxxx\n"
+            env_content += "# export OCI_USER_OCID=ocid1.user.oc1..xxxxx\n"
+            env_content += "# export OCI_FINGERPRINT=xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx\n"
+            env_content += "# export OCI_PRIVATE_KEY_PATH=~/.oci/oci_api_key.pem\n"
+        elif cloud_config.provider == "aws":
+            env_content += "# AWS Credentials\n"
+            env_content += "# Configure using: aws configure\n"
+            env_content += "# Or set:\n"
+            env_content += "# export AWS_ACCESS_KEY_ID=xxxxx\n"
+            env_content += "# export AWS_SECRET_ACCESS_KEY=xxxxx\n"
+            env_content += "# export AWS_DEFAULT_REGION=us-east-1\n"
+        elif cloud_config.provider == "gcp":
+            env_content += "# GCP Credentials\n"
+            env_content += "# Set: export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json\n"
+            env_content += "# Or run: gcloud auth application-default login\n"
+            env_content += "# export GCP_PROJECT=your-project-id\n"
+        
+        env_path = terraform_dir / ".env.example"
+        self.file_writer.write_file(env_path, env_content, overwrite=False)
+    
+    def _generate_documentation(
+        self,
+        project_root: Path,
+        config: ProjectConfig,
+        context: Dict[str, Any]
+    ) -> None:
+        """Generate MkDocs documentation site."""
+        # Create docs directory
+        docs_dir = project_root / "docs"
+        self.file_writer.create_directory(docs_dir)
+        
+        # Add INCLUDE_CI to context
+        context["INCLUDE_CI"] = config.include_ci
+        
+        # Generate documentation pages
+        doc_templates = [
+            ("docs/index.md.template", "index.md"),
+            ("docs/install.md.template", "install.md"),
+            ("docs/usage.md.template", "usage.md"),
+            ("docs/env.md.template", "env.md"),
+        ]
+        
+        # Add CI docs if enabled
+        if config.include_ci:
+            doc_templates.append(("docs/ci.md.template", "ci.md"))
+        
+        # Add cloud docs if enabled
+        if config.cloud:
+            doc_templates.append(("docs/cloud.md.template", "cloud.md"))
+        
+        # Generate all documentation pages
+        for template_path, output_file in doc_templates:
+            rendered = self.template_engine.render_template(
+                Path(template_path),
+                context
+            )
+            output_path = docs_dir / output_file
+            self.file_writer.write_file(output_path, rendered, overwrite=False)
+        
+        # Generate mkdocs.yml
+        mkdocs_template = Path("docs/mkdocs.yml.template")
+        rendered_mkdocs = self.template_engine.render_template(
+            mkdocs_template,
+            context
+        )
+        mkdocs_path = project_root / "mkdocs.yml"
+        self.file_writer.write_file(mkdocs_path, rendered_mkdocs, overwrite=False)
+        
+        # Generate requirements.txt for MkDocs
+        mkdocs_requirements = """mkdocs>=1.5.0
+mkdocs-material>=9.0.0
+"""
+        requirements_path = project_root / "docs-requirements.txt"
+        self.file_writer.write_file(requirements_path, mkdocs_requirements, overwrite=False)
+    
+    def _initialize_secrets(
+        self,
+        project_root: Path,
+        config: ProjectConfig,
+        context: Dict[str, Any]
+    ) -> None:
+        """Initialize secrets store and generate secret key placeholders."""
+        # Skip in dry-run mode
+        if self.file_writer.dry_run:
+            return
+        
+        from .secrets_manager import SecretsManager
+        
+        manager = SecretsManager(project_root)
+        
+        # Initialize secrets store
+        manager.init_store()
+        
+        # Generate required secret keys (but don't set values - user must do that)
+        required_secrets = []
+        
+        if config.database:
+            # Database password secret key
+            db_secret_key = "DATABASE_PASSWORD"
+            required_secrets.append(db_secret_key)
+            # Generate a secure password and store it
+            if config.database.password:
+                manager.set_secret(db_secret_key, config.database.password)
+        
+        if config.backend:
+            # Backend secret key (for sessions, JWT, etc.)
+            backend_secret_key = "BACKEND_SECRET_KEY"
+            required_secrets.append(backend_secret_key)
+            # Generate a secure key
+            backend_key = self._generate_password(32)
+            manager.set_secret(backend_secret_key, backend_key)
+        
+        # Generate .gitignore entry for secrets
+        gitignore_path = project_root / ".gitignore"
+        if gitignore_path.exists():
+            content = gitignore_path.read_text()
+            if ".secrets.devforge" not in content:
+                content += "\n# DevForge secrets (encrypted)\n.secrets.devforge\n"
+                content += ".env.secrets\n"
+                self.file_writer.write_file(gitignore_path, content, overwrite=True)
+        
+        # Generate secrets.env.template reference (not actual secrets)
+        secrets_template_path = project_root / "secrets.env.example"
+        if not secrets_template_path.exists():
+            secrets_template = self.templates_dir / "security" / "secrets.env.template"
+            if secrets_template.exists():
+                # Render template with placeholders (not actual secrets)
+                secrets_context = context.copy()
+                secrets_context["DATABASE_PASSWORD_SECRET"] = "{{ DATABASE_PASSWORD }}"
+                secrets_context["BACKEND_SECRET_KEY"] = "{{ BACKEND_SECRET_KEY }}"
+                rendered = self.template_engine.render_template(
+                    Path("security/secrets.env.template"),
+                    secrets_context
+                )
+                self.file_writer.write_file(secrets_template_path, rendered, overwrite=False)
+        
+        logger.info("Secrets store initialized. Use 'devforge secrets inject' to generate .env.secrets")
     
     @staticmethod
     def _generate_password(length: int = 16) -> str:

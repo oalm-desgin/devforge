@@ -1,0 +1,153 @@
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+# VPC Network
+resource "google_compute_network" "main" {
+  name                    = "{{ PROJECT_NAME }}-vpc"
+  auto_create_subnetworks = false
+}
+
+# Subnet
+resource "google_compute_subnetwork" "main" {
+  name          = "{{ PROJECT_NAME }}-subnet"
+  ip_cidr_range = "10.0.1.0/24"
+  region        = var.region
+  network       = google_compute_network.main.id
+}
+
+# Firewall Rules
+resource "google_compute_firewall" "allow_http" {
+  name    = "{{ PROJECT_NAME }}-allow-http"
+  network = google_compute_network.main.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["http-server"]
+}
+
+resource "google_compute_firewall" "allow_https" {
+  name    = "{{ PROJECT_NAME }}-allow-https"
+  network = google_compute_network.main.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["https-server"]
+}
+
+{% if BACKEND_PORT %}
+resource "google_compute_firewall" "allow_backend" {
+  name    = "{{ PROJECT_NAME }}-allow-backend"
+  network = google_compute_network.main.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["{{ BACKEND_PORT }}"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["backend-server"]
+}
+{% endif %}
+
+{% if FRONTEND_PORT %}
+resource "google_compute_firewall" "allow_frontend" {
+  name    = "{{ PROJECT_NAME }}-allow-frontend"
+  network = google_compute_network.main.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["{{ FRONTEND_PORT }}"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["frontend-server"]
+}
+{% endif %}
+
+# Load Balancer (HTTP)
+resource "google_compute_backend_service" "main" {
+  name        = "{{ PROJECT_NAME }}-backend"
+  protocol    = "HTTP"
+  timeout_sec = 10
+
+  health_checks = [google_compute_health_check.main.id]
+}
+
+resource "google_compute_health_check" "main" {
+  name               = "{{ PROJECT_NAME }}-health-check"
+  check_interval_sec = 10
+  timeout_sec         = 5
+  healthy_threshold   = 2
+  unhealthy_threshold = 3
+
+  http_health_check {
+    port         = 80
+    request_path = "/health"
+  }
+}
+
+resource "google_compute_url_map" "main" {
+  name            = "{{ PROJECT_NAME }}-url-map"
+  default_service = google_compute_backend_service.main.id
+}
+
+resource "google_compute_target_http_proxy" "main" {
+  name    = "{{ PROJECT_NAME }}-http-proxy"
+  url_map = google_compute_url_map.main.id
+}
+
+resource "google_compute_global_forwarding_rule" "main" {
+  name       = "{{ PROJECT_NAME }}-forwarding-rule"
+  target     = google_compute_target_http_proxy.main.id
+  port_range = "80"
+}
+
+# Compute Instance
+resource "google_compute_instance" "main" {
+  name         = "{{ PROJECT_NAME }}-compute"
+  machine_type = "e2-micro"
+  zone         = "${var.region}-a"
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+    }
+  }
+
+  network_interface {
+    network    = google_compute_network.main.name
+    subnetwork = google_compute_subnetwork.main.name
+
+    access_config {
+      // Ephemeral public IP
+    }
+  }
+
+  tags = ["http-server", "https-server"{% if BACKEND_PORT %}, "backend-server"{% endif %}{% if FRONTEND_PORT %}, "frontend-server"{% endif %}]
+
+  metadata = {
+    ssh-keys = "${var.ssh_user}:${file(var.ssh_public_key_path)}"
+  }
+}
+
+

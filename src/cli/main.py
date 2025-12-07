@@ -47,9 +47,31 @@ def parse_args():
         help='Include CI configuration files (Jenkinsfile and GitHub Actions)'
     )
     parser.add_argument(
+        '--cloud',
+        action='store_true',
+        help='Include cloud infrastructure (Terraform) for OCI, AWS, or GCP'
+    )
+    parser.add_argument(
         '--version',
         action='version',
         version=f'%(prog)s {VERSION}'
+    )
+    parser.add_argument(
+        'command',
+        nargs='?',
+        choices=['plugins', 'ui', 'registry', 'docs', 'secrets'],
+        help='Command to run (plugins: list available plugins, ui: launch interactive TUI, registry: manage template registry, docs: generate documentation, secrets: manage secrets)'
+    )
+    parser.add_argument(
+        'registry_subcommand',
+        nargs='?',
+        choices=['list', 'install', 'refresh', 'uninstall'],
+        help='Registry subcommand (list, install, refresh, uninstall)'
+    )
+    parser.add_argument(
+        'registry_arg',
+        nargs='?',
+        help='Argument for registry subcommand (template name for install/uninstall, URL for refresh)'
     )
     return parser.parse_args()
 
@@ -58,11 +80,112 @@ def main():
     """Main CLI entry point."""
     args = parse_args()
     
+    # Handle plugins command
+    if args.command == 'plugins':
+        from ..plugins import get_plugin_manager
+        manager = get_plugin_manager()
+        plugins = manager.get_all_plugins()
+        
+        if not plugins:
+            print("No plugins found.")
+            return
+        
+        print("Available plugins:")
+        print("=" * 60)
+        for name, plugin in plugins.items():
+            print(f"  {name} (v{plugin.version})")
+            templates = manager.get_plugin_templates(name)
+            if templates:
+                print(f"    Templates: {', '.join(templates.keys())}")
+        print("=" * 60)
+        return
+    
+    # Handle ui command
+    if args.command == 'ui':
+        from ..ui.app import ui
+        ui(
+            preset=args.preset,
+            with_ci=args.with_ci,
+            dry_run=args.dry_run,
+        )
+        return
+    
+    # Handle registry command
+    if args.command == 'registry':
+        from .registry import (
+            cmd_registry_list,
+            cmd_registry_install,
+            cmd_registry_refresh,
+            cmd_registry_uninstall,
+        )
+        
+        subcommand = args.registry_subcommand or 'list'
+        
+        if subcommand == 'list':
+            cmd_registry_list()
+        elif subcommand == 'install':
+            if not args.registry_arg:
+                print("Error: Template name required for 'install' command", file=sys.stderr)
+                print("Usage: devforge registry install <template_name>", file=sys.stderr)
+                sys.exit(1)
+            cmd_registry_install(args.registry_arg)
+        elif subcommand == 'refresh':
+            cmd_registry_refresh(args.registry_arg)
+        elif subcommand == 'uninstall':
+            if not args.registry_arg:
+                print("Error: Template name required for 'uninstall' command", file=sys.stderr)
+                print("Usage: devforge registry uninstall <template_name>", file=sys.stderr)
+                sys.exit(1)
+            cmd_registry_uninstall(args.registry_arg)
+        return
+    
+    # Handle docs command
+    if args.command == 'docs':
+        from .docs import cmd_docs_generate
+        cmd_docs_generate()
+        return
+    
+    # Handle secrets command
+    if args.command == 'secrets':
+        from .secrets import (
+            cmd_secrets_init,
+            cmd_secrets_set,
+            cmd_secrets_get,
+            cmd_secrets_list,
+            cmd_secrets_inject,
+            cmd_secrets_sync_github
+        )
+        
+        if not args.secrets_subcommand:
+            parser.print_help()
+            sys.exit(1)
+        
+        if args.secrets_subcommand == 'init':
+            cmd_secrets_init()
+        elif args.secrets_subcommand == 'set':
+            if not args.secrets_key:
+                print("❌ Error: Secret key required for 'set' command", file=sys.stderr)
+                sys.exit(1)
+            cmd_secrets_set(args.secrets_key, args.secrets_value)
+        elif args.secrets_subcommand == 'get':
+            if not args.secrets_key:
+                print("❌ Error: Secret key required for 'get' command", file=sys.stderr)
+                sys.exit(1)
+            cmd_secrets_get(args.secrets_key)
+        elif args.secrets_subcommand == 'list':
+            cmd_secrets_list()
+        elif args.secrets_subcommand == 'inject':
+            cmd_secrets_inject()
+        elif args.secrets_subcommand == 'sync-github':
+            cmd_secrets_sync_github(args.repo)
+        return
+    
     try:
         # Collect configuration from user
         config = collect_project_config(
             preset_path=args.preset if args.preset else None,
-            include_ci=args.with_ci
+            include_ci=args.with_ci,
+            include_cloud=args.cloud
         )
         
         # Final validation of destination path
@@ -79,7 +202,8 @@ def main():
         
         # Initialize project generator
         templates_dir = Path(__file__).parent.parent / "templates"
-        generator = ProjectGenerator(templates_dir, file_writer)
+        plugins_dir = Path(__file__).parent.parent / "plugins"
+        generator = ProjectGenerator(templates_dir, file_writer, plugins_dir)
         
         # Generate project
         logger.info(f"\nGenerating project '{config.project_name}'...")

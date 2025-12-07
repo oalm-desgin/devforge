@@ -1,0 +1,38 @@
+variable "tenancy_ocid" {
+  description = "OCID of the tenancy"
+  type        = string
+}
+
+variable "user_ocid" {
+  description = "OCID of the user"
+  type        = string
+}
+
+variable "fingerprint" {
+  description = "Fingerprint of the API key"
+  type        = string
+}
+
+variable "private_key_path" {
+  description = "Path to the private key file"
+  type        = string
+  default     = "~/.oci/oci_api_key.pem"
+}
+
+variable "region" {
+  description = "OCI region"
+  type        = string
+  default     = "{{ CLOUD_REGION }}"
+}
+
+variable "compartment_id" {
+  description = "OCID of the compartment"
+  type        = string
+}
+
+variable "ssh_public_key" {
+  description = "SSH public key for compute instance"
+  type        = string
+}
+
+

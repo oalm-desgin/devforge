@@ -1,0 +1,186 @@
+# Installation Guide
+
+This guide will help you set up and run {{ PROJECT_NAME }} in your local environment.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Docker** and **Docker Compose** (recommended for easiest setup)
+- **Python 3.11+** (for local development without Docker)
+{% if DATABASE_STACK == "postgres" %}
+- **PostgreSQL** (optional, for local development)
+{% elif DATABASE_STACK == "mongo" %}
+- **MongoDB** (optional, for local development)
+{% elif DATABASE_STACK == "redis" %}
+- **Redis** (optional, for local development)
+{% endif %}
+
+## Quick Start with Docker
+
+The easiest way to get started is using Docker Compose:
+
+1. **Navigate to the project directory:**
+   ```bash
+   cd {{ PROJECT_NAME }}
+   ```
+
+2. **Copy the environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+   Or use the provided `.env` file if it exists.
+
+3. **Start all services:**
+   ```bash
+   docker compose up
+   ```
+
+4. **Verify services are running:**
+   ```bash
+   docker compose ps
+   ```
+
+5. **Access the application:**
+{% if FRONTEND_PORT %}
+   - Frontend: http://localhost:{{ FRONTEND_PORT }}
+{% endif %}
+{% if BACKEND_PORT %}
+   - Backend API: http://localhost:{{ BACKEND_PORT }}
+   - Health Check: http://localhost:{{ BACKEND_PORT }}/health
+{% endif %}
+
+## Local Development Setup
+
+If you prefer to run services locally without Docker:
+
+### Backend Setup
+
+{% if BACKEND_STACK %}
+1. **Navigate to the backend directory:**
+   ```bash
+   cd backend
+   ```
+
+2. **Create a virtual environment:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the development server:**
+   ```bash
+   uvicorn main:app --reload --host 0.0.0.0 --port {{ BACKEND_PORT }}
+   ```
+{% else %}
+Backend is not included in this project.
+{% endif %}
+
+### Database Setup
+
+{% if DATABASE_STACK == "postgres" %}
+#### PostgreSQL
+
+1. **Install PostgreSQL** (if not already installed):
+   - macOS: `brew install postgresql`
+   - Linux: `sudo apt-get install postgresql`
+   - Windows: Download from [PostgreSQL website](https://www.postgresql.org/download/)
+
+2. **Create the database:**
+   ```bash
+   createdb {{ DATABASE_NAME }}
+   ```
+
+3. **Update connection string in your backend code:**
+   ```
+   postgresql://{{ DATABASE_USER }}:{{ DATABASE_PASSWORD }}@localhost:{{ DATABASE_PORT }}/{{ DATABASE_NAME }}
+   ```
+
+{% elif DATABASE_STACK == "mongo" %}
+#### MongoDB
+
+1. **Install MongoDB** (if not already installed):
+   - macOS: `brew install mongodb-community`
+   - Linux: `sudo apt-get install mongodb`
+   - Windows: Download from [MongoDB website](https://www.mongodb.com/try/download/community)
+
+2. **Start MongoDB service:**
+   ```bash
+   # macOS with Homebrew:
+   brew services start mongodb-community
+   
+   # Linux:
+   sudo systemctl start mongod
+   ```
+
+3. **Create the database** (MongoDB creates databases on first use):
+   ```bash
+   mongosh
+   use {{ DATABASE_NAME }}
+   ```
+
+4. **Update connection string in your backend code:**
+   ```
+   mongodb://{{ DATABASE_USER }}:{{ DATABASE_PASSWORD }}@localhost:{{ DATABASE_PORT }}/{{ DATABASE_NAME }}
+   ```
+
+{% elif DATABASE_STACK == "redis" %}
+#### Redis
+
+1. **Install Redis** (if not already installed):
+   - macOS: `brew install redis`
+   - Linux: `sudo apt-get install redis`
+   - Windows: Download from [Redis website](https://redis.io/download)
+
+2. **Start Redis service:**
+   ```bash
+   # macOS with Homebrew:
+   brew services start redis
+   
+   # Linux:
+   sudo systemctl start redis
+   ```
+
+3. **Update connection string in your backend code:**
+   ```
+   redis://localhost:{{ DATABASE_PORT }}
+   ```
+{% else %}
+No database is configured for this project.
+{% endif %}
+
+## Troubleshooting
+
+### Port Already in Use
+
+If you encounter port conflicts:
+
+1. Check which process is using the port:
+   ```bash
+   # macOS/Linux:
+   lsof -i :{{ BACKEND_PORT }}
+   
+   # Windows:
+   netstat -ano | findstr :{{ BACKEND_PORT }}
+   ```
+
+2. Either stop the conflicting process or change the port in `.env` file.
+
+### Docker Issues
+
+- **Containers won't start:** Check logs with `docker compose logs`
+- **Port conflicts:** Ensure ports are not in use by other services
+- **Permission errors:** On Linux, you may need to run with `sudo` or add your user to the docker group
+
+### Database Connection Issues
+
+- Ensure the database service is running
+- Verify connection credentials in `.env` file
+- Check database logs for errors
+
+

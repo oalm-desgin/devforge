@@ -1,0 +1,140 @@
+# CI/CD Configuration
+
+This document describes the CI/CD setup for {{ PROJECT_NAME }}.
+
+{% if INCLUDE_CI %}
+## Overview
+
+This project includes CI/CD configuration for:
+- **GitHub Actions** - Automated testing and deployment
+- **Jenkins** - Pipeline configuration
+
+## GitHub Actions
+
+The GitHub Actions workflow is located at `.github/workflows/ci.yml`.
+
+### Workflow Features
+
+- **Automated Testing**: Runs tests on every push and pull request
+- **Code Quality**: Checks code style and linting
+- **Multi-Python Version**: Tests against Python 3.10, 3.11, and 3.12
+- **Coverage Reports**: Generates test coverage reports
+
+### Workflow Triggers
+
+The workflow runs on:
+- Push to `main` branch
+- Pull requests to `main` branch
+- Manual workflow dispatch
+
+### Viewing Workflow Results
+
+1. Go to your GitHub repository
+2. Click on the "Actions" tab
+3. Select a workflow run to view details
+
+## Jenkins
+
+The Jenkins pipeline is configured in `Jenkinsfile` in the project root.
+
+### Pipeline Stages
+
+1. **Checkout** - Clone the repository
+2. **Build** - Build Docker images
+3. **Test** - Run test suite
+4. **Deploy** - Deploy to staging/production (if configured)
+
+### Running Jenkins Pipeline
+
+1. Create a new Jenkins pipeline job
+2. Point it to your repository
+3. Jenkins will automatically detect the `Jenkinsfile`
+4. Run the pipeline manually or configure triggers
+
+## Local CI Testing
+
+You can test CI configurations locally:
+
+### GitHub Actions
+
+Use [act](https://github.com/nektos/act) to run GitHub Actions locally:
+
+```bash
+# Install act
+# macOS: brew install act
+# Linux: See act documentation
+
+# Run workflow
+act
+```
+
+### Jenkins
+
+Use Jenkinsfile Runner to test locally:
+
+```bash
+# Build Jenkinsfile Runner
+docker build -t jenkinsfile-runner .
+
+# Run pipeline
+docker run --rm -v $(pwd):/workspace jenkinsfile-runner
+```
+
+## CI Environment Variables
+
+Configure these in your CI/CD platform:
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `PYTHON_VERSION` | Python version to use | Yes |
+| `DOCKER_REGISTRY` | Docker registry URL | No |
+| `DOCKER_IMAGE` | Docker image name | No |
+
+## Customizing CI/CD
+
+### Adding New Stages
+
+Edit the workflow files:
+- `.github/workflows/ci.yml` for GitHub Actions
+- `Jenkinsfile` for Jenkins
+
+### Adding Deployment
+
+Add deployment stages to your CI/CD configuration:
+
+```yaml
+# Example GitHub Actions deployment
+- name: Deploy
+  run: |
+    # Your deployment commands here
+```
+
+## Troubleshooting
+
+### CI Build Failures
+
+1. **Check logs**: Review CI logs for error messages
+2. **Test locally**: Run tests locally before pushing
+3. **Environment variables**: Ensure all required variables are set
+4. **Dependencies**: Verify all dependencies are correctly specified
+
+### Common Issues
+
+- **Python version mismatch**: Ensure CI uses the correct Python version
+- **Missing dependencies**: Check that all dependencies are in requirements files
+- **Permission errors**: Verify CI has necessary permissions for deployment
+{% else %}
+CI/CD configuration is not included in this project.
+
+To add CI/CD support, regenerate the project with the `--with-ci` flag:
+
+```bash
+devforge --with-ci
+```
+
+This will add:
+- GitHub Actions workflow (`.github/workflows/ci.yml`)
+- Jenkins pipeline configuration (`Jenkinsfile`)
+{% endif %}
+
+

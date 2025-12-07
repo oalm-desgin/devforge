@@ -1,0 +1,55 @@
+site_name: {{ PROJECT_NAME }} Documentation
+site_description: Documentation for {{ PROJECT_NAME }}
+site_author: {{ PROJECT_NAME }} Team
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+
+nav:
+  - Home: index.md
+  - Installation: install.md
+  - Usage: usage.md
+  - Environment Variables: env.md
+{% if INCLUDE_CI %}
+  - CI/CD: ci.md
+{% endif %}
+{% if CLOUD_PROVIDER %}
+  - Cloud Infrastructure: cloud.md
+{% endif %}
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search
+  - mkdocs-material
+
+

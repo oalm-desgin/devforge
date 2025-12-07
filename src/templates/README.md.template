@@ -194,6 +194,93 @@ If you get a port conflict error, you can change the ports in the `.env` file an
 - Verify Python dependencies are installed correctly
 - Ensure the backend port is not already in use
 
+{% if CLOUD_PROVIDER %}
+## Cloud Infrastructure (Terraform)
+
+This project includes Terraform configuration for deploying to {{ CLOUD_PROVIDER|upper }}.
+
+### Prerequisites
+
+- Terraform >= 1.0 installed
+- {{ CLOUD_PROVIDER|upper }} account and credentials configured
+
+### Setup
+
+1. Navigate to the terraform directory:
+   ```bash
+   cd terraform
+   ```
+
+2. Configure credentials (see `.env.example` for details):
+   {% if CLOUD_PROVIDER == "oci" %}
+   ```bash
+   export OCI_TENANCY_OCID=ocid1.tenancy.oc1..xxxxx
+   export OCI_USER_OCID=ocid1.user.oc1..xxxxx
+   export OCI_FINGERPRINT=xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx
+   export OCI_PRIVATE_KEY_PATH=~/.oci/oci_api_key.pem
+   ```
+   {% elif CLOUD_PROVIDER == "aws" %}
+   ```bash
+   aws configure
+   # Or set:
+   export AWS_ACCESS_KEY_ID=xxxxx
+   export AWS_SECRET_ACCESS_KEY=xxxxx
+   export AWS_DEFAULT_REGION={{ CLOUD_REGION }}
+   ```
+   {% elif CLOUD_PROVIDER == "gcp" %}
+   ```bash
+   gcloud auth application-default login
+   export GCP_PROJECT=your-project-id
+   ```
+   {% endif %}
+
+3. Initialize Terraform:
+   ```bash
+   terraform init
+   ```
+
+4. Review the plan:
+   ```bash
+   terraform plan
+   ```
+
+5. Apply the infrastructure:
+   ```bash
+   terraform apply
+   ```
+
+### Resources Created
+
+The Terraform configuration creates:
+- **VPC/VCN**: Virtual network for your infrastructure
+- **Subnet**: Network subnet for resources
+- **Load Balancer**: Application load balancer
+- **Compute Instance**: Virtual machine for running your application
+- **Security Groups/Firewall**: Network security rules
+
+### Outputs
+
+After applying, Terraform will output:
+- VPC/VCN ID
+- Subnet ID
+- Load Balancer IP/DNS
+- Compute Instance Public IP
+
+View outputs with:
+```bash
+terraform output
+```
+
+### Destroying Infrastructure
+
+To remove all cloud resources:
+```bash
+terraform destroy
+```
+
+**Warning:** This will delete all infrastructure created by Terraform.
+{% endif %}
+
 ## Stopping Services
 
 To stop all services:
@@ -205,4 +292,66 @@ To stop and remove volumes (this will delete database data):
 ```bash
 docker compose down -v
 ```
+
+## 📚 Documentation
+
+This project includes a complete MkDocs documentation site in the `docs/` directory.
+
+### Viewing Documentation Locally
+
+```bash
+# Install MkDocs dependencies
+pip install -r docs-requirements.txt
+
+# Serve documentation locally
+mkdocs serve
+```
+
+The documentation will be available at http://127.0.0.1:8000
+
+### Building Documentation
+
+```bash
+mkdocs build
+```
+
+This creates a `site/` directory with static HTML files.
+
+### Publishing to GitHub Pages
+
+1. **Automatic deployment with GitHub Actions:**
+
+   Create `.github/workflows/docs.yml`:
+   ```yaml
+   name: Deploy Docs
+   on:
+     push:
+       branches: [main]
+   jobs:
+     deploy:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v3
+         - uses: actions/setup-python@v4
+           with:
+             python-version: '3.11'
+         - run: pip install -r docs-requirements.txt
+         - run: mkdocs gh-deploy --force
+   ```
+
+2. **Manual deployment:**
+
+   ```bash
+   mkdocs gh-deploy
+   ```
+
+3. **Configure GitHub Pages:**
+
+   - Go to repository Settings > Pages
+   - Source: Deploy from a branch
+   - Branch: `gh-pages` / `root`
+   - Save
+
+The documentation will be available at:
+`https://<username>.github.io/<repository-name>/`
 

@@ -38,6 +38,10 @@ ENV/
 .env.local
 .env.*.local
 
+# DevForge secrets (encrypted)
+.secrets.devforge
+.env.secrets
+
 # Logs
 *.log
 

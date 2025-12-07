@@ -15,6 +15,7 @@
 - ✅ **Multiple Stack Support**: React + TypeScript + Vite, FastAPI, PostgreSQL
 - ✅ **Docker Integration**: Automatic Docker Compose configuration
 - ✅ **CI/CD Ready**: Optional Jenkins and GitHub Actions templates
+- ✅ **Secure Secrets Management**: Encrypted secrets with GitHub sync and leak scanning
 - ✅ **Safe & Validated**: Comprehensive validation prevents common mistakes
 - ✅ **Dry-Run Mode**: Preview changes before generating
 - ✅ **Preset Support**: Reuse configurations with JSON presets
@@ -113,6 +114,118 @@ This generates:
 - `Jenkinsfile` for Jenkins pipelines
 - `.github/workflows/ci.yml` for GitHub Actions
 
+### Interactive TUI Mode
+
+Launch the interactive Rich TUI interface:
+
+```bash
+devforge ui
+```
+
+The TUI provides:
+- Visual project configuration wizard
+- Component toggles with keyboard navigation
+- Database engine selector
+- Real-time port preview
+- Dry-run preview before generation
+
+Options:
+- `--preset <path>`: Load preset defaults
+- `--with-ci`: Include CI configuration
+- `--dry-run`: Preview without creating files
+
+### Template Registry
+
+Manage remote templates from the registry:
+
+```bash
+# List available templates
+devforge registry list
+
+# Refresh registry from remote
+devforge registry refresh
+
+# Install a template
+devforge registry install <template_name>
+
+# Uninstall a template
+devforge registry uninstall <template_name>
+```
+
+The registry stores templates in `~/.devforge/registry.json` and caches downloaded templates in `~/.devforge/templates/`. Templates work offline after the first download.
+
+### Cloud Infrastructure (Terraform)
+
+Generate Terraform configurations for cloud deployment:
+
+```bash
+devforge --cloud
+```
+
+This will prompt you to select a cloud provider:
+- **Oracle Cloud Infrastructure (OCI)**
+- **Amazon Web Services (AWS)**
+- **Google Cloud Platform (GCP)**
+
+The generated `terraform/` directory includes:
+- VPC/VCN configuration
+- Subnet setup
+- Load balancer configuration
+- Compute instance setup
+- Security groups/firewall rules
+- Environment variable examples
+
+After generation, navigate to `terraform/` and run:
+```bash
+terraform init
+terraform plan
+terraform apply
+```
+
+### Documentation Website
+
+Every generated project includes a complete MkDocs documentation site:
+
+```bash
+# View documentation
+cd docs
+pip install -r ../docs-requirements.txt
+mkdocs serve
+```
+
+The documentation includes:
+- **Installation Guide** - Setup and installation instructions
+- **Usage Guide** - How to use the project
+- **Environment Variables** - Configuration reference
+- **Secrets Management** - Secure secret storage and injection
+- **CI/CD Configuration** - If `--with-ci` was used
+- **Cloud Infrastructure** - If `--cloud` was used
+
+**Publishing to GitHub Pages:**
+
+1. Build the documentation:
+   ```bash
+   mkdocs build
+   ```
+
+2. Configure GitHub Pages in repository settings to use `gh-pages` branch
+
+3. Add GitHub Actions workflow (automated):
+   ```yaml
+   name: Deploy Docs
+   on:
+     push:
+       branches: [main]
+   jobs:
+     deploy:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v3
+         - uses: actions/setup-python@v4
+         - run: pip install -r docs-requirements.txt
+         - run: mkdocs gh-deploy --force
+   ```
+
 ### Version Information
 
 Check the installed version:
@@ -167,6 +280,20 @@ Every generated project comes with:
 
 | Option | Description |
 |--------|-------------|
+| `ui` | Launch interactive Rich TUI interface |
+| `plugins` | List available template plugins |
+| `registry list` | List available templates in registry |
+| `registry refresh` | Refresh registry from remote URL |
+| `registry install <name>` | Install a template from registry |
+| `registry uninstall <name>` | Uninstall a template |
+| `docs` | Generate documentation for existing project |
+| `secrets init` | Initialize encrypted secrets store |
+| `secrets set <KEY> [VALUE]` | Set a secret value |
+| `secrets get <KEY>` | Get a secret value |
+| `secrets list` | List all secret keys |
+| `secrets inject` | Inject secrets into .env.secrets for runtime |
+| `secrets sync-github [--repo OWNER/REPO]` | Sync secrets to GitHub repository |
+| `--cloud` | Include cloud infrastructure (Terraform) for OCI, AWS, or GCP |
 | `--dry-run` | Preview generation without creating files |
 | `--preset <path>` | Load defaults from JSON preset file |
 | `--with-ci` | Include CI configuration files (Jenkinsfile, GitHub Actions) |
@@ -281,5 +408,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ by the DevForge community**
 
