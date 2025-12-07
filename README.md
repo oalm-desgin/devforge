@@ -7,405 +7,263 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-scanning-brightgreen.svg)](https://github.com/yourusername/devforge/actions)
 
-**DevForge** is a powerful command-line tool that generates complete, production-ready local development environments for web projects in one command. Stop spending hours setting up project scaffolding—DevForge does it for you.
+DevForge
 
-## 🚀 Features
+By Omar Al Moumen
 
-- ✅ **Full Stack Generation**: Create complete projects with frontend, backend, and database
-- ✅ **Multiple Stack Support**: React + TypeScript + Vite, FastAPI, PostgreSQL
-- ✅ **Docker Integration**: Automatic Docker Compose configuration
-- ✅ **CI/CD Ready**: Optional Jenkins and GitHub Actions templates
-- ✅ **Secure Secrets Management**: Encrypted secrets with GitHub sync and leak scanning
-- ✅ **Safe & Validated**: Comprehensive validation prevents common mistakes
-- ✅ **Dry-Run Mode**: Preview changes before generating
-- ✅ **Preset Support**: Reuse configurations with JSON presets
-- ✅ **Zero Overwrites**: Never accidentally overwrite existing files
+DevForge is a full-stack development environment generator that instantly scaffolds production-ready web projects with a complete local infrastructure. It removes the repetitive setup of frontend, backend, databases, Docker, CI/CD, secrets, and documentation into a single automated workflow.
 
-## 📦 Installation
+Built entirely in Python, DevForge is designed for developer productivity, DevOps automation, and secure project bootstrapping.
 
-### From Source
 
-```bash
-git clone https://github.com/yourusername/devforge.git
+🚀 Key Features
+
+✅ Full Stack Generation – Frontend, backend, and database in one command
+
+✅ Modern Tech Stack – React + TypeScript + Vite, FastAPI, PostgreSQL
+
+✅ Docker Ready – Automatic Docker Compose setup
+
+✅ CI/CD Automation – Jenkins + GitHub Actions templates
+
+✅ Secure Secrets Manager – Encrypted secrets with GitHub sync + leak scanning
+
+✅ MkDocs Documentation Generator – Auto-generated developer docs website
+
+✅ Interactive TUI – Rich terminal UI for configuration
+
+✅ Dry-Run Mode – Preview filesystem changes before generation
+
+✅ Preset System – Reusable JSON configuration profiles
+
+✅ Zero Overwrite Protection – Never destroys existing files
+
+
+🏗️ Why DevForge Exists
+
+Setting up a new development environment repeatedly is slow, error-prone, and inconsistent. DevForge solves this by automating:
+
+Infrastructure setup
+
+Service configuration
+
+Secrets handling
+
+CI/CD pipelines
+
+Documentation generation
+
+This makes it ideal for:
+
+Internships and hackathons
+
+Startup environments
+
+Academic projects
+
+Rapid prototyping
+
+Team onboarding
+
+📦 Installation
+From Source
+git clone https://github.com/<your-username>/devforge.git
 cd devforge
 pip install -e .
-```
 
-### From PyPI (Coming Soon)
 
-```bash
-pip install devforge
-```
-
-## 🎯 Quick Start
-
-After installation, simply run:
-
-```bash
+⚡ Quick Start
 devforge
-```
 
-The tool will interactively guide you through:
-- Project name and destination
-- Component selection (frontend, backend, database)
-- Configuration options
 
-In seconds, you'll have a fully configured development environment ready to use!
+You will be guided through:
 
-## 📖 Usage
+Project name & destination
 
-### Basic Usage
+Frontend, backend, database selection
 
-```bash
-devforge
-```
+Port configuration
 
-Or run directly:
+Optional CI/CD
 
-```bash
-python src/cli/main.py
-```
+Optional cloud infrastructure
 
-### Dry-Run Mode
+In seconds, a fully functional environment is generated.
 
-Preview what will be generated without creating any files:
-
-```bash
+🖥️ Example Commands
+Dry Run
 devforge --dry-run
-```
 
-This will show you:
-- All directories that would be created
-- All files that would be written
-- No actual filesystem changes
-
-### Preset Configuration
-
-Use a JSON preset file to set default answers to prompts:
-
-```bash
-devforge --preset my-preset.json
-```
-
-Example preset file (`my-preset.json`):
-
-```json
-{
-  "default_frontend": true,
-  "default_backend": true,
-  "default_database": true,
-  "frontend_port": 3000,
-  "backend_port": 8000,
-  "database_port": 5432
-}
-```
-
-Preset values are used as defaults, but you can still override them interactively.
-
-### CI/CD Integration
-
-Include CI configuration files in your generated project:
-
-```bash
+With CI/CD
 devforge --with-ci
-```
 
-This generates:
-- `Jenkinsfile` for Jenkins pipelines
-- `.github/workflows/ci.yml` for GitHub Actions
-
-### Interactive TUI Mode
-
-Launch the interactive Rich TUI interface:
-
-```bash
-devforge ui
-```
-
-The TUI provides:
-- Visual project configuration wizard
-- Component toggles with keyboard navigation
-- Database engine selector
-- Real-time port preview
-- Dry-run preview before generation
-
-Options:
-- `--preset <path>`: Load preset defaults
-- `--with-ci`: Include CI configuration
-- `--dry-run`: Preview without creating files
-
-### Template Registry
-
-Manage remote templates from the registry:
-
-```bash
-# List available templates
-devforge registry list
-
-# Refresh registry from remote
-devforge registry refresh
-
-# Install a template
-devforge registry install <template_name>
-
-# Uninstall a template
-devforge registry uninstall <template_name>
-```
-
-The registry stores templates in `~/.devforge/registry.json` and caches downloaded templates in `~/.devforge/templates/`. Templates work offline after the first download.
-
-### Cloud Infrastructure (Terraform)
-
-Generate Terraform configurations for cloud deployment:
-
-```bash
+With Cloud (Terraform)
 devforge --cloud
-```
 
-This will prompt you to select a cloud provider:
-- **Oracle Cloud Infrastructure (OCI)**
-- **Amazon Web Services (AWS)**
-- **Google Cloud Platform (GCP)**
+Using Presets
+devforge --preset my-preset.json
 
-The generated `terraform/` directory includes:
-- VPC/VCN configuration
-- Subnet setup
-- Load balancer configuration
-- Compute instance setup
-- Security groups/firewall rules
-- Environment variable examples
+Launch Interactive TUI
+devforge ui
 
-After generation, navigate to `terraform/` and run:
-```bash
-terraform init
-terraform plan
-terraform apply
-```
 
-### Documentation Website
+🔐 Secrets Management (Security Focus)
 
-Every generated project includes a complete MkDocs documentation site:
+DevForge includes a full encrypted secrets system:
 
-```bash
-# View documentation
-cd docs
-pip install -r ../docs-requirements.txt
+devforge secrets init
+devforge secrets set DB_PASSWORD mypassword
+devforge secrets get DB_PASSWORD
+devforge secrets list
+devforge secrets inject
+devforge secrets sync-github
+
+
+Security guarantees:
+
+Encrypted at rest using Fernet (AES)
+
+Platform-secure key storage
+
+No plaintext secrets in repositories
+
+Pre-commit secret leak scanner
+
+CI validation for secret exposure
+
+
+📚 Auto-Generated Documentation Website
+
+Every project includes a live MkDocs website:
+
+pip install -r docs-requirements.txt
 mkdocs serve
-```
 
-The documentation includes:
-- **Installation Guide** - Setup and installation instructions
-- **Usage Guide** - How to use the project
-- **Environment Variables** - Configuration reference
-- **Secrets Management** - Secure secret storage and injection
-- **CI/CD Configuration** - If `--with-ci` was used
-- **Cloud Infrastructure** - If `--cloud` was used
 
-**Publishing to GitHub Pages:**
+Included pages:
 
-1. Build the documentation:
-   ```bash
-   mkdocs build
-   ```
+Installation guide
 
-2. Configure GitHub Pages in repository settings to use `gh-pages` branch
+Usage guide
 
-3. Add GitHub Actions workflow (automated):
-   ```yaml
-   name: Deploy Docs
-   on:
-     push:
-       branches: [main]
-   jobs:
-     deploy:
-       runs-on: ubuntu-latest
-       steps:
-         - uses: actions/checkout@v3
-         - uses: actions/setup-python@v4
-         - run: pip install -r docs-requirements.txt
-         - run: mkdocs gh-deploy --force
-   ```
+Environment variables
 
-### Version Information
+Secrets management
 
-Check the installed version:
+CI/CD documentation
 
-```bash
-devforge --version
-```
+Cloud infrastructure (if enabled)
 
-## 🛠️ Supported Stacks
+☁️ Cloud Infrastructure (Terraform)
 
-### Frontend
-- **React** + **TypeScript** + **Vite** + **Tailwind CSS**
+Supports:
 
-### Backend
-- **FastAPI** (Python)
+Oracle Cloud Infrastructure (OCI)
 
-### Database
-- **PostgreSQL**
+AWS
 
-## 🎨 Component Combinations
+Google Cloud
 
-Generate projects with any valid combination:
+Auto-generates:
 
-| Combination | Description |
-|------------|-------------|
-| **Full Stack** | Frontend + Backend + Database |
-| **Backend + Database** | API-only project |
-| **Backend Only** | API without database |
-| **Frontend Only** | Standalone frontend application |
+Networks
 
-## 🔒 Safety Features
+Subnets
 
-- ✅ **No Overwrites**: Existing files are never overwritten without explicit confirmation
-- ✅ **Validation**: Comprehensive validation of project names, paths, and configurations
-- ✅ **Reserved Names**: Prevents use of reserved names (test, temp, example, etc.)
-- ✅ **Port Validation**: Ensures no port conflicts between services
-- ✅ **Empty Destination**: Validates that destination directory is empty or doesn't exist
+Security rules
 
-## 📦 Generated Project Includes
+Instances
 
-Every generated project comes with:
+Load balancers
 
-- ✅ Complete folder structure
-- ✅ Working starter code with examples
-- ✅ Docker Compose configuration
-- ✅ Environment variable files (`.env`)
-- ✅ Comprehensive README with instructions
-- ✅ Git ignore rules
-- ✅ Optional CI/CD configuration (with `--with-ci`)
+🛠️ Supported Stacks
+Frontend
 
-## ⚙️ Command-Line Options
+React
 
-| Option | Description |
-|--------|-------------|
-| `ui` | Launch interactive Rich TUI interface |
-| `plugins` | List available template plugins |
-| `registry list` | List available templates in registry |
-| `registry refresh` | Refresh registry from remote URL |
-| `registry install <name>` | Install a template from registry |
-| `registry uninstall <name>` | Uninstall a template |
-| `docs` | Generate documentation for existing project |
-| `secrets init` | Initialize encrypted secrets store |
-| `secrets set <KEY> [VALUE]` | Set a secret value |
-| `secrets get <KEY>` | Get a secret value |
-| `secrets list` | List all secret keys |
-| `secrets inject` | Inject secrets into .env.secrets for runtime |
-| `secrets sync-github [--repo OWNER/REPO]` | Sync secrets to GitHub repository |
-| `--cloud` | Include cloud infrastructure (Terraform) for OCI, AWS, or GCP |
-| `--dry-run` | Preview generation without creating files |
-| `--preset <path>` | Load defaults from JSON preset file |
-| `--with-ci` | Include CI configuration files (Jenkinsfile, GitHub Actions) |
-| `--version` | Show version information and exit |
-| `--help` | Show help message and exit |
+TypeScript
 
-## 🐛 Error Handling
+Vite
 
-DevForge provides clear, user-friendly error messages:
+Tailwind CSS
 
-- **Validation Errors**: Invalid configurations are caught early with helpful messages
-- **Generation Errors**: Template or file system issues are reported clearly
-- **Template Errors**: Missing or invalid templates are identified
+Backend
 
-## 🗺️ Roadmap
+FastAPI (Python)
 
-### Planned Features
+Database
 
-- [ ] Additional frontend frameworks (Vue, Angular)
-- [ ] Additional backend frameworks (Spring Boot, Express.js)
-- [ ] Additional databases (MongoDB, MySQL)
-- [ ] Kubernetes manifests generation
-- [ ] Helm chart templates
-- [ ] Custom template support
-- [ ] Plugin system for extensibility
+PostgreSQL
 
-### Version History
+🧩 Project Combinations
+Mode	Description
+Full Stack	Frontend + Backend + Database
+API Only	Backend + Database
+Backend Only	API without DB
+Frontend Only	Standalone app
+⚙️ CLI Command Reference
+Command	Description
+devforge	Start interactive generator
+devforge ui	Launch TUI
+devforge docs	Generate documentation
+devforge plugins	List plugins
+devforge registry list	List templates
+devforge secrets init	Init encrypted store
+devforge secrets set	Store secret
+devforge secrets get	Retrieve secret
+devforge secrets inject	Inject into runtime
+devforge --cloud	Add Terraform
+devforge --with-ci	Add CI/CD
+devforge --dry-run	Preview without writing
 
-- **v0.1.0** (Current): Initial release with React, FastAPI, PostgreSQL support
+🧠 Engineering Highlights 
 
-## 🤝 Contributing
+Designed full CLI architecture using argparse
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Implemented encryption with cryptography
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Built secure GitHub Secrets synchronization
 
-### Development Setup
+Designed registry & template plugin system
 
-```bash
-git clone https://github.com/yourusername/devforge.git
+Implemented filesystem safety validation
+
+Built MkDocs generator with dynamic parsing
+
+Added GitHub Actions & Jenkins CI scaffolding
+
+150+ automated tests for security & generation
+
+Cross-platform support (Windows, Linux, macOS)
+
+🗺️ Roadmap
+
+Kubernetes Helm chart generation
+
+Vue & Angular frontend support
+
+Spring Boot & Express backend support
+
+MongoDB & MySQL support
+
+Custom user templates
+
+Plugin marketplace
+
+🤝 Contributing
+git clone https://github.com/<your-username>/devforge.git
 cd devforge
 pip install -e ".[dev]"
-```
-
-### Setting Up Git Hooks
-
-To enable commit message validation:
-
-**Linux/macOS:**
-```bash
-chmod +x scripts/setup_git_hooks.sh
-./scripts/setup_git_hooks.sh
-```
-
-**Windows (PowerShell):**
-```powershell
-.\scripts\setup_git_hooks.ps1
-```
-
-This will install a pre-commit hook that validates commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) format.
-
-### Commit Message Format
-
-All commits must follow Conventional Commits format:
-
-- `feat: add new feature`
-- `fix: fix bug`
-- `chore: maintenance task`
-- `docs: documentation change`
-- `test: add or update tests`
-- `refactor: code refactoring`
-- `feat!: breaking change` (use `!` for breaking changes)
-
-### CI/CD
-
-The project uses GitHub Actions for continuous integration:
-
-- **Linting**: Runs `ruff` and `black --check` on all Python code
-- **Testing**: Runs full test suite on Python 3.10, 3.11, and 3.12 across Ubuntu, Windows, and macOS
-- **Coverage**: Enforces 85% minimum code coverage
-- **Security**: Scans dependencies with `pip-audit` for vulnerabilities
-- **Packaging**: Automatically builds packages on push to main
-- **Releases**: Automatically creates GitHub releases on version tags (v*)
-
-### Version Bumping
-
-Version is automatically bumped based on commit types:
-
-- `feat:` → minor version bump
-- `fix:` → patch version bump
-- Breaking changes (`!`) → major version bump
-
-Run `python scripts/bump_version.py` to bump the version before creating a release tag.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with Python and Jinja2
-- Inspired by the need for faster project setup
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/yourusername/devforge/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/devforge/discussions)
-
----
 
 
+All contributions must follow Conventional Commits.
+
+👤 Author
+
+Omar Al Moumen
+Software Developer
+Automation • DevOps • Full-Stack • Security
+
+📄 License
+
+MIT License
