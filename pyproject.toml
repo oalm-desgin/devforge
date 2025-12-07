@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "devforge"
-version = "0.1.1"
+version = "0.2.0"
 description = "Generate complete local development environments for web projects"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -51,7 +51,7 @@ include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 100
-target-version = "0.1.1"
+target-version = "0.2.0"
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
